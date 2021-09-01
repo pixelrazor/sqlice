@@ -1,7 +1,6 @@
 package sqlice_test
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
@@ -166,7 +165,6 @@ func TestFilter_ErrorConditions(t *testing.T) {
 	tests := map[string]struct {
 		input, output interface{}
 		filter        squirrel.Sqlizer
-		err           error // if this is nil, the test just insures that any error occured
 	}{
 		"nil input and output": {},
 		"nil input": {
@@ -226,9 +224,7 @@ func TestFilter_ErrorConditions(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			err := sqlice.Filter(test.input, test.output, test.filter)
-			if test.err != nil && !errors.Is(err, test.err) {
-				t.Fatalf("Expected %v, got %v", test.err, err)
-			} else if err == nil {
+			if err == nil {
 				t.Fatal("Expected an error, got nil")
 			}
 		})

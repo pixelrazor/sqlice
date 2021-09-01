@@ -368,7 +368,7 @@ func getFields(t reflect.Type) map[string]fieldInfo {
 	return fields
 }
 
-// getParamValues will check the paramters for the following properties:
+// getParamValues will check the parameters for the following properties:
 // input must be a slice of filterable objects (currently just structs)
 // output must be a pointer to a slice of the same type as input
 // both input and output should not be nil
