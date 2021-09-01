@@ -8,7 +8,7 @@ This makes it easy to:
  - provide filtering to functions not backed by database storage, while keeping it consistent with your functions that do
  - easily mock out your database interfaces and have your filters work the same
 
-sqlice supports the following filters from the squirrel package:afadfad
+sqlice supports the following filters from the squirrel package:afadfaqwerqwrd
  - Eq
  - NotEq
  - Lt
