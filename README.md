@@ -1,5 +1,7 @@
 # sqlice
-[![Go Reference](https://pkg.go.dev/badge/github.com/pixelrazor/sqlice.svg)](https://pkg.go.dev/github.com/pixelrazor/sqlice) [![Go Report Card](https://goreportcard.com/badge/github.com/pixelrazor/sqlice)](https://goreportcard.com/report/github.com/pixelrazor/sqlice)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pixelrazor/sqlice.svg)](https://pkg.go.dev/github.com/pixelrazor/sqlice) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/pixelrazor/sqlice)](https://goreportcard.com/report/github.com/pixelrazor/sqlice) 
+[![Build Status](https://github.com/pixelrazor/sqlice/actions/workflows/build.yml/badge.svg)](https://github.com/pixelrazor/sqlice/actions/workflows/build.yml)
 
 sqlice extends the functinailty of [squirrel](https://github.com/Masterminds/squirrel) and allows you to your database filtering on slices!
 This makes it easy to:
