@@ -1,3 +1,60 @@
+/*
+package sqlice extends the functinailty of [squirrel](https://github.com/Masterminds/squirrel) and allows you to your database filtering on slices!
+This makes it easy to:
+ - provide filtering to functions not backed by database storage, while keeping it consistent with your functions that do
+ - easily mock out your database interfaces and have your filters work the same
+
+sqlice supports the following filters from the squirrel package:
+ - Eq
+ - NotEq
+ - Lt
+ - LtOrEq
+ - Gt
+ - GtOrEq
+ - And
+ - Or
+ - Like
+ - NotLike
+ - ILike
+ - NotILike
+
+ ## Usage
+
+ sqlice will use the name of the struct fields to match with the columns/keys in the filters.
+
+```go
+type FooBar struct {
+    A int
+}
+
+values := []FooBar{{A: 4}, {A: 2}, {A: 1}, {A: 3}}
+var filteredValues []FooBar
+err := sqlice.Filter(values, &filteredValues, Squirrel.Gt{"A": 2})
+if err != nil {
+    panic(err)
+}
+fmt.Println(filteredValues) // {{A: 4}, {A: 3}}
+```
+
+The comparison is case insensitive. The following examples shows comparing against a custom named field
+
+```go
+type FooBar struct {
+    A int `db:"myColumnName"`
+}
+
+values := []FooBar{{A: 4}, {A: 2}, {A: 1}, {A: 3}}
+var filteredValues []FooBar
+err := sqlice.Filter(values, &filteredValues, Squirrel.Lt{"myColumnName": 3})
+if err != nil {
+    panic(err)
+}
+fmt.Println(filteredValues) // {{A: 2}, {A: 1}}
+```
+
+The struct tag used by this package is identical to the ones used by [sqlx](https://github.com/jmoiron/sqlx). This is done intentionally to help
+ensure that you can use sqlice without needing to do any modifications to your structs
+*/
 package sqlice
 
 import (
@@ -41,6 +98,11 @@ func (vff ValueFilterFunc) ToSql() (string, []interface{}, error) {
 	return "", nil, errors.New("ValueFilterFuncs do not implement squirrel.Sqlizer")
 }
 
+// Filter filters the input slice using the filter, storing the result in output. Input must be a slice of
+// filterable elements (a struct) and output must be a pointer to a slice of identical type. If the filter
+// contains fields not present in the struct or values that aren't compatible with corresponding field, an
+// error is returned. If a filter is encountered that is not from the squirrel package, it is only used if
+// it implements ValueFilterer
 func Filter(input, output interface{}, filter squirrel.Sqlizer) error {
 	inVal, outVal, err := getParamValues(input, output)
 	if err != nil {

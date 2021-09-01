@@ -1,7 +1,9 @@
 package sqlice_test
 
 import (
+	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/Masterminds/squirrel"
@@ -229,4 +231,53 @@ func TestFilter_ErrorConditions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleFilter() {
+	type FooBar struct {
+		A int
+		B string `db:"bar"`
+	}
+	input := []FooBar{
+		{A: 2, B: "b"},
+		{A: 4, B: "d"},
+		{A: 1, B: "a"},
+		{A: 5, B: "e"},
+		{A: 3, B: "c"},
+	}
+	var output []FooBar
+
+	err := sqlice.Filter(input, &output, squirrel.And{
+		squirrel.Gt{"A": 1},
+		squirrel.Lt{"bar": "e"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(output)
+	// Output: [{2 b} {4 d} {3 c}]
+}
+
+func ExampleValueFilterFunc() {
+	type FooBar struct {
+		Things []int
+	}
+	filterFunc := func(i interface{}) bool {
+		return sort.IntsAreSorted((i.(FooBar).Things))
+	}
+
+	input := []FooBar{
+		{Things: []int{3, 8, 1}},
+		{Things: []int{1, 2, 3}},
+		{Things: []int{5, 3, 1}},
+		{Things: []int{5, 8, 9}},
+	}
+	var output []FooBar
+
+	err := sqlice.Filter(input, &output, sqlice.ValueFilterFunc(filterFunc))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(output)
+	// Output: [{[1 2 3]} {[5 8 9]}]
 }
