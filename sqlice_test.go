@@ -129,6 +129,150 @@ func TestFilter(t *testing.T) {
 			}{{B: []string{"a1", "a2"}}, {B: []string{"a1", "a4"}}},
 			filter: squirrel.NotEq{"bar": []string{"a1", "a3"}},
 		},
+		"Like with %": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "abqwe"}, {B: "abc"}, {B: "acb"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "abqwe"}, {B: "abc"}},
+			filter: squirrel.Like{"bar": "ab%"},
+		},
+		"Like with _": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "abqwe"}, {B: "abc"}, {B: "acb"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "abc"}},
+			filter: squirrel.Like{"bar": "ab_"},
+		},
+		"Like with escaped %": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "ab%qwe"}, {B: "abc"}, {B: "ac%b"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "ab%qwe"}, {B: "ac%b"}},
+			filter: squirrel.Like{"bar": `%\%%`},
+		},
+		"Like with escaped _": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "ab_qwe"}, {B: "a_c"}, {B: "a__"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "a_c"}, {B: "a__"}},
+			filter: squirrel.Like{"bar": `_\__`},
+		},
+		"Like with escaped \\": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "ab\\qwe"}, {B: "a\\c"}, {B: "a__"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "ab\\qwe"}, {B: "a\\c"}},
+			filter: squirrel.Like{"bar": `%\\%`},
+		},
+		"Like with *": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "ab*qwe"}, {B: "a*c"}, {B: "a*_"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "a*c"}, {B: "a*_"}},
+			filter: squirrel.Like{"bar": `%*_`},
+		},
+		"Like with .": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "ab.qwe"}, {B: "a.c"}, {B: "a._"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "a.c"}, {B: "a._"}},
+			filter: squirrel.Like{"bar": `%._`},
+		},
+		"Like is case sensitive": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "Abc"}, {B: "AbC"}, {B: "abC"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "AbC"}},
+			filter: squirrel.Like{"bar": `A_C`},
+		},
+		"ILike": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "Abc"}, {B: "AbC"}, {B: "abC"}, {B: "abc"}, {B: "bb"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "Abc"}, {B: "AbC"}, {B: "abC"}, {B: "abc"}},
+			filter: squirrel.ILike{"bar": `a_c`},
+		},
+		"ILike expression case insensitive": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "Abc"}, {B: "AbC"}, {B: "abC"}, {B: "abc"}, {B: "bb"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "Abc"}, {B: "AbC"}, {B: "abC"}, {B: "abc"}},
+			filter: squirrel.ILike{"bar": `A_C`},
+		},
+		"NotILike": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "Abc"}, {B: "AbC"}, {B: "abC"}, {B: "abc"}, {B: "bb"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "bb"}},
+			filter: squirrel.NotILike{"bar": `a_c`},
+		},
+		"NotLike": {
+			input: []struct {
+				B string `db:"bar"`
+			}{{B: "a1c"}, {B: "A1C"}, {B: "aqc123"}, {B: "aciop"}},
+			output: &[]struct {
+				B string `db:"bar"`
+			}{},
+			expectedOutput: &[]struct {
+				B string `db:"bar"`
+			}{{B: "A1C"}, {B: "aciop"}},
+			filter: squirrel.NotLike{"bar": `a_c%`},
+		},
 		"ValueFilterer": {
 			input: []struct {
 				B []string `db:"bar"`
@@ -221,6 +365,11 @@ func TestFilter_ErrorConditions(t *testing.T) {
 			input:  []struct{ A []string }{},
 			output: &[]struct{ A []string }{},
 			filter: squirrel.Eq{"A": []int{}},
+		},
+		"filter field wrong type 4": {
+			input:  []struct{ A []string }{},
+			output: &[]struct{ A []string }{},
+			filter: squirrel.Like{"A": []int{}},
 		},
 	}
 	for name, test := range tests {

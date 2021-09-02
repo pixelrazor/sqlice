@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -236,13 +237,41 @@ func matchesFilter(item reflect.Value, filter squirrel.Sqlizer, fields map[strin
 		}
 		return true, nil
 	case squirrel.Like:
-		panic("not implemented")
+		for name, value := range filter {
+			field := fields[name]
+			reString := expressionToRegexp(fmt.Sprint(value))
+			if matches, err := regexp.MatchString(reString, fmt.Sprint(item.Field(field.Index).Interface())); err != nil || !matches {
+				return false, err
+			}
+		}
+		return true, nil
 	case squirrel.NotLike:
-		panic("not implemented")
+		for name, value := range filter {
+			field := fields[name]
+			reString := expressionToRegexp(fmt.Sprint(value))
+			if matches, err := regexp.MatchString(reString, fmt.Sprint(item.Field(field.Index).Interface())); err != nil || matches {
+				return false, err
+			}
+		}
+		return true, nil
 	case squirrel.ILike:
-		panic("not implemented")
+		for name, value := range filter {
+			field := fields[name]
+			reString := `(?i)` + expressionToRegexp(fmt.Sprint(value))
+			if matches, err := regexp.MatchString(reString, fmt.Sprint(item.Field(field.Index).Interface())); err != nil || !matches {
+				return false, err
+			}
+		}
+		return true, nil
 	case squirrel.NotILike:
-		panic("not implemented")
+		for name, value := range filter {
+			field := fields[name]
+			reString := `(?i)` + expressionToRegexp(fmt.Sprint(value))
+			if matches, err := regexp.MatchString(reString, fmt.Sprint(item.Field(field.Index).Interface())); err != nil || matches {
+				return false, err
+			}
+		}
+		return true, nil
 	case ValueFilterer:
 		return filter.FilterValue(item.Interface()), nil
 	default:
@@ -280,16 +309,16 @@ func sanitizeFilter(filter squirrel.Sqlizer, fields map[string]fieldInfo) (squir
 		ret, err := sanitizeMap(filter, fields)
 		return squirrel.LtOrEq(ret), err
 	case squirrel.Like:
-		ret, err := sanitizeMap(filter, fields)
+		ret, err := sanitizeStringMap(filter, fields)
 		return squirrel.Like(ret), err
 	case squirrel.NotLike:
-		ret, err := sanitizeMap(filter, fields)
+		ret, err := sanitizeStringMap(filter, fields)
 		return squirrel.NotLike(ret), err
 	case squirrel.ILike:
-		ret, err := sanitizeMap(filter, fields)
+		ret, err := sanitizeStringMap(filter, fields)
 		return squirrel.ILike(ret), err
 	case squirrel.NotILike:
-		ret, err := sanitizeMap(filter, fields)
+		ret, err := sanitizeStringMap(filter, fields)
 		return squirrel.NotILike(ret), err
 	default:
 		return filter, nil
@@ -319,7 +348,7 @@ func sanitizeMap(filters map[string]interface{}, fields map[string]fieldInfo) (m
 		expectedKind := reducedKind(field.Type.Kind())
 		typesMatch := false
 		switch expectedKind {
-		case reflect.Int64, reflect.Uint64, reflect.Complex128, reflect.Float64:
+		case reflect.Int64, reflect.Uint64, reflect.Float64:
 			typesMatch = expectedKind == reducedKind(reflect.ValueOf(value).Kind())
 		default:
 			typesMatch = field.Type == reflect.ValueOf(value).Type()
@@ -327,6 +356,24 @@ func sanitizeMap(filters map[string]interface{}, fields map[string]fieldInfo) (m
 		if !typesMatch {
 			return nil, fmt.Errorf("expected field '%v' to have type %v, got %v", name, field.Type, reflect.ValueOf(value).Type())
 		}
+		output[nameLower] = value
+	}
+	return output, nil
+}
+
+func sanitizeStringMap(filters map[string]interface{}, fields map[string]fieldInfo) (map[string]interface{}, error) {
+	output := make(map[string]interface{})
+	for name, value := range filters {
+		nameLower := strings.ToLower(name)
+		_, ok := fields[nameLower]
+		if !ok {
+			return nil, fmt.Errorf("struct has no field named '%v'", name)
+		}
+
+		if reflect.ValueOf(value).Kind() != reflect.String {
+			return nil, errors.New("expression must be a string")
+		}
+
 		output[nameLower] = value
 	}
 	return output, nil
@@ -342,8 +389,6 @@ func reducedKind(kind reflect.Kind) reflect.Kind {
 		return reflect.Uint64
 	case reflect.Float32, reflect.Float64:
 		return reflect.Float64
-	case reflect.Complex64, reflect.Complex128:
-		return reflect.Complex128
 	default:
 		return kind
 	}
@@ -412,4 +457,26 @@ func getParamValues(input, output interface{}) (reflect.Value, reflect.Value, er
 		return reflect.Value{}, reflect.Value{}, errors.New("output slice type is not identical to the input ")
 	}
 	return inputValue, outputValue, nil
+}
+
+func expressionToRegexp(input string) (output string) {
+	input = regexp.QuoteMeta(input)
+	input = strings.ReplaceAll(input, `\\`, `\`)
+	var last rune
+	escape := '\\'
+	for _, char := range input {
+		if char == '%' && last != escape {
+			output += ".*"
+		} else if char == '_' && last != escape {
+			output += "."
+		} else if char == escape && last == escape {
+			output += `\`
+			last = ' '
+			continue
+		} else {
+			output += string(char)
+		}
+		last = char
+	}
+	return "^" + output + "$"
 }
